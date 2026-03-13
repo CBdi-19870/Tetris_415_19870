@@ -41,6 +41,7 @@
             z-index: -1;
         }
 
+        /* 깜빡이는 배경 별 */
         .star-bg {
             position: absolute;
             background: white;
@@ -49,10 +50,21 @@
             animation: twinkle var(--duration) infinite;
         }
 
+        /* 떨어지는 별 */
+        .falling-star {
+            position: absolute;
+            background: linear-gradient(to bottom, transparent, white);
+            width: 1.5px;
+            height: 20px;
+            opacity: 0.3;
+            animation: fall var(--duration) linear infinite;
+        }
+
+        /* 유성 */
         .comet {
             position: absolute;
             width: 2px;
-            height: 80px;
+            height: 100px;
             background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(125, 211, 252, 0.8) 50%, white 100%);
             opacity: 0;
             transform: rotate(-45deg);
@@ -64,11 +76,18 @@
             50% { opacity: 1; }
         }
 
+        @keyframes fall {
+            0% { transform: translateY(-100px); opacity: 0; }
+            10% { opacity: 0.5; }
+            90% { opacity: 0.5; }
+            100% { transform: translateY(110vh); opacity: 0; }
+        }
+
         @keyframes shoot {
             0% { transform: translateX(0) translateY(0) rotate(-45deg); opacity: 0; }
-            10% { opacity: 1; }
-            20% { transform: translateX(-300px) translateY(300px) rotate(-45deg); opacity: 0; }
-            100% { transform: translateX(-300px) translateY(300px) rotate(-45deg); opacity: 0; }
+            5% { opacity: 1; }
+            15% { transform: translateX(-400px) translateY(400px) rotate(-45deg); opacity: 0; }
+            100% { transform: translateX(-400px) translateY(400px) rotate(-45deg); opacity: 0; }
         }
 
         .header {
@@ -293,10 +312,12 @@
     </div>
 
     <script>
-        // 배경 생성 로직
+        // 배경 생성 로직 (별 깜빡임, 떨어지는 별, 유성 추가)
         function initBackground() {
             const container = document.getElementById('stars-container');
             container.innerHTML = '';
+            
+            // 1. 고정되어 깜빡이는 별 (100개)
             for (let i = 0; i < 100; i++) {
                 const star = document.createElement('div');
                 star.className = 'star-bg';
@@ -307,6 +328,27 @@
                 star.style.height = size;
                 star.style.setProperty('--duration', (Math.random() * 3 + 2) + 's');
                 container.appendChild(star);
+            }
+
+            // 2. 위에서 아래로 떨어지는 은은한 별 (20개)
+            for (let i = 0; i < 20; i++) {
+                const falling = document.createElement('div');
+                falling.className = 'falling-star';
+                falling.style.left = Math.random() * 100 + '%';
+                falling.style.setProperty('--duration', (Math.random() * 5 + 5) + 's');
+                falling.style.animationDelay = (Math.random() * 5) + 's';
+                container.appendChild(falling);
+            }
+
+            // 3. 간헐적으로 지나가는 유성 (3개)
+            for (let i = 0; i < 3; i++) {
+                const comet = document.createElement('div');
+                comet.className = 'comet';
+                comet.style.left = (Math.random() * 100 + 50) + '%';
+                comet.style.top = (Math.random() * 40 - 20) + '%';
+                comet.style.setProperty('--duration', (Math.random() * 10 + 10) + 's');
+                comet.style.animationDelay = (Math.random() * 15) + 's';
+                container.appendChild(comet);
             }
         }
 
@@ -338,7 +380,6 @@
             return 1000 + (lvl - 1) * 500;
         }
 
-        // 별 모양 드로잉 (성능 최적화)
         function drawStar(context, x, y, size, colorIndex) {
             const cx = x + size / 2;
             const cy = y + size / 2;
@@ -371,19 +412,16 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // 그리드
             ctx.strokeStyle = 'rgba(125, 211, 252, 0.05)';
             for(let i=0; i<=COLS; i++) { ctx.beginPath(); ctx.moveTo(i*BLOCK_SIZE, 0); ctx.lineTo(i*BLOCK_SIZE, canvas.height); ctx.stroke(); }
             for(let j=0; j<=ROWS; j++) { ctx.beginPath(); ctx.moveTo(0, j*BLOCK_SIZE); ctx.lineTo(canvas.width, j*BLOCK_SIZE); ctx.stroke(); }
 
-            // 보드 상태
             board.forEach((row, y) => {
                 row.forEach((val, x) => {
                     if (val > 0) drawStar(ctx, x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, val);
                 });
             });
 
-            // 현재 피스
             if (currentPiece) {
                 currentPiece.shape.forEach((row, y) => {
                     row.forEach((val, x) => {
@@ -392,7 +430,6 @@
                 });
             }
 
-            // UI 캔버스 업데이트
             renderUIPreview(nCtx, nextPiece, 15);
             renderUIPreview(hCtx, holdPiece, 15);
         }
@@ -459,6 +496,8 @@
                 level++;
                 scoreForCurrentLevel -= target;
                 document.getElementById('level-up-notice').style.display = 'block';
+                const goalText = document.getElementById('next-goal-text');
+                goalText.innerText = `Next: ${getTargetScore(level)} points`;
                 setTimeout(() => document.getElementById('level-up-notice').style.display = 'none', 1500);
                 checkLevelUp();
             }
@@ -544,7 +583,6 @@
             requestAnimationFrame(update);
         }
 
-        // 이벤트 리스너
         document.addEventListener('keydown', e => {
             if (gameOver || paused) return;
             switch(e.keyCode) {
